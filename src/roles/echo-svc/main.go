@@ -24,7 +24,7 @@ func main() {
 }
 
 func InitRouter() *gin.Engine {
-	//gin.SetMode()
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	//v2 := r.Group("/v2")
 	r.GET("/", Index)
@@ -32,8 +32,9 @@ func InitRouter() *gin.Engine {
 }
 
 const (
-	KitchenSec = "3:04:05 PM"
-	BodyFormat = `hello, echo-svc, current is %v
+	Lnatian3339 = "Mon, 02 Jan 2006 3:04:05 PM"
+	BodyFormat  = `hello, echo-svc, current is
+    %v
 
 > app version: %v
 > git commit: %v
@@ -48,7 +49,7 @@ func GetCstTimeStr() string {
 	}
 
 	t := time.Now().In(loc)
-	str := t.Format(KitchenSec)
+	str := t.Format(Lnatian3339)
 	return str
 }
 
