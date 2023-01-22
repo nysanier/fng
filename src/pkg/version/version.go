@@ -7,10 +7,14 @@ var (
 	BuildTime = "zz"
 )
 
+const (
+	ShortGitCommitLength = 8
+)
+
 func GetShortGitCommit() string {
-	if len(GitCommit) < 10 {
+	if len(GitCommit) < ShortGitCommitLength {
 		return GitCommit
 	}
 
-	return GitCommit[:10]
+	return GitCommit[:ShortGitCommitLength]
 }
