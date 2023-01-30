@@ -7,8 +7,8 @@ import (
 
 	dnsclient "github.com/alibabacloud-go/alidns-20150109/v4/client"
 	openclient "github.com/alibabacloud-go/darabonba-openapi/v2/client"
-	"github.com/nysanier/fng/src/pkg/pkgconfig"
 	"github.com/nysanier/fng/src/pkg/pkgfunc"
+	"github.com/nysanier/fng/src/pkg/pkgvar"
 )
 
 var (
@@ -18,9 +18,9 @@ var (
 
 func GetDnsClient() *dnsclient.Client {
 	cfg := &openclient.Config{
-		AccessKeyId:     pkgfunc.StringPtr(pkgconfig.AK),
-		AccessKeySecret: pkgfunc.StringPtr(pkgconfig.SK),
-		RegionId:        pkgfunc.StringPtr("cn-hangzhou"),
+		AccessKeyId:     pkgfunc.StringPtr(pkgvar.GetAK()),
+		AccessKeySecret: pkgfunc.StringPtr(pkgvar.GetSK()),
+		RegionId:        pkgfunc.StringPtr(pkgvar.RegionID),
 	}
 
 	dnsClientOnce.Do(func() {

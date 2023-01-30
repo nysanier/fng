@@ -85,7 +85,7 @@ func AesDecrypt(data []byte, key []byte) ([]byte, error) {
 
 //EncryptByAES Aes加密 后 base64 再加
 func EncryptByAES(data []byte) (string, error) {
-	res, err := AesEncrypt(data, pkgvar.AesKey)
+	res, err := AesEncrypt(data, pkgvar.FnAesKey)
 	if err != nil {
 		return "", err
 	}
@@ -98,5 +98,5 @@ func DecryptByAES(data string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return AesDecrypt(dataByte, pkgvar.AesKey)
+	return AesDecrypt(dataByte, pkgvar.FnAesKey)
 }

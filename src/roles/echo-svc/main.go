@@ -8,18 +8,29 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nysanier/fng/src/pkg/pkgconfig"
+	"github.com/nysanier/fng/src/pkg/pkgenv"
 	"github.com/nysanier/fng/src/pkg/pkgfunc"
 	"github.com/nysanier/fng/src/pkg/pkgutil"
+	"github.com/nysanier/fng/src/pkg/pkgvar"
 	"github.com/nysanier/fng/src/pkg/version"
 )
 
+var (
+	startTime = "program start time"
+)
+
 func main() {
+	startTime = GetCstTimeStr()
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 	log.Printf("fng init begin")
 
+	pkgenv.LoadEnv()
 	pkgconfig.LoadConfig()
 
-	go pkgutil.RunDnsUpdater()
+	// dev环境暂时不启动dnsUpdater
+	if !pkgvar.IsDevEnv() {
+		go pkgutil.RunDnsUpdater()
+	}
 
 	// Start Http Server
 	r := InitRouter()
@@ -51,9 +62,10 @@ const (
     current is:  %v
     remote addr: %v
 
-> app ver: %v.%v
-> build time: %v
-> service ip: %v`
+> app version: %v.%v
+> build time:  %v
+> service ip:  %v
+> start time:  %v`
 )
 
 func GetCstTimeStr() string {
@@ -67,6 +79,6 @@ func Index(ctx *gin.Context) {
 	remoteAddr := ctx.Request.RemoteAddr
 	log.Printf("remote address: %v", remoteAddr)
 	str := fmt.Sprintf(BodyFormat, cstTimeStr, remoteAddr,
-		version.AppVer, version.GetShortGitCommit(), version.BuildTime, pkgutil.GetServiceIP())
+		version.AppVer, version.GetShortGitCommit(), version.BuildTime, pkgutil.GetServiceIP(), startTime)
 	ctx.String(http.StatusOK, str)
 }

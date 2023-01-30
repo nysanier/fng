@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/nysanier/fng/src/pkg/pkgclient"
-	"github.com/nysanier/fng/src/pkg/pkgconfig"
+	"github.com/nysanier/fng/src/pkg/pkgvar"
 )
 
 var (
@@ -22,7 +22,7 @@ const (
 )
 
 func GetServiceIP() string {
-	if pkgconfig.Env == pkgconfig.Env_Dev {
+	if pkgvar.IsDevEnv() {
 		// 将当前时间格式化为ip，方便观察
 		//s := pkgfunc.GetCstNow().Format(FormatTime)
 		//
@@ -44,12 +44,12 @@ func GetServiceIP() string {
 }
 
 func getDnsRR() string {
-	switch pkgconfig.Env {
-	case pkgconfig.Env_Dev:
+	switch pkgvar.FnEnv {
+	case pkgvar.FnEnv_Dev:
 		return "dev"
-	case pkgconfig.Env_Daily:
+	case pkgvar.FnEnv_Daily:
 		return "daily"
-	case pkgconfig.Env_Stg:
+	case pkgvar.FnEnv_Stg:
 		return "stg"
 	default:
 		return "test"
@@ -58,8 +58,8 @@ func getDnsRR() string {
 
 // TODO: 更新之前可以先比较一下，不过当前更新的频率比较低，性能也是ok的
 func updateDns() error {
-	switch pkgconfig.Env {
-	case pkgconfig.Env_Dev, pkgconfig.Env_Daily:
+	switch pkgvar.FnEnv {
+	case pkgvar.FnEnv_Dev, pkgvar.FnEnv_Daily:
 	default: // 其他环境不需要自动更新
 		return nil
 	}
