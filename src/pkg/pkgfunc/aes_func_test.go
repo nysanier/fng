@@ -19,9 +19,9 @@ func Test_EncryptByAES(t *testing.T) {
 		Convey("ok", func() {
 			defer patches.Reset()
 
-			pkgvar.AesKey = []byte("aaa") // 补齐到16位
+			pkgvar.AesKey = []byte("aaaaaaaaaaxxxxxx") // 补齐到16位
 			//var err error
-			str := "bbb"
+			str := "bbbbbbbbbbxxxxxx"
 			r, err1 := EncryptByAES([]byte(str))
 			buf, err2 := DecryptByAES(r)
 			log.Printf("err1=%v, err2=%v", err1, err2)
