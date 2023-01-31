@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	ServiceIP string // 定时更新
+	ServiceIP = "11.22.33.44" // 定时更新
 )
 
 const (

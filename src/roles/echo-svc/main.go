@@ -20,7 +20,7 @@ var (
 )
 
 func main() {
-	startTime = GetCstTimeStr()
+	startTime = getCRFC3339CstTimeStr()
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 	log.Printf("fng init begin")
 
@@ -64,21 +64,27 @@ const (
 
 > app version: %v.%v
 > build time:  %v
-> service ip:  %v
-> start time:  %v`
+> start time:  %v
+> service ip:  %v`
 )
 
-func GetCstTimeStr() string {
+func getFn1123CstTimeStr() string {
 	t := pkgfunc.GetCstNow()
 	str := t.Format(Fn3339)
 	return str
 }
 
+func getCRFC3339CstTimeStr() string {
+	t := pkgfunc.GetCstNow()
+	str := pkgfunc.GetRFC3339TimeStr(t)
+	return str
+}
+
 func Index(ctx *gin.Context) {
-	cstTimeStr := GetCstTimeStr()
+	curTimeStr := getFn1123CstTimeStr()
 	remoteAddr := ctx.Request.RemoteAddr
 	log.Printf("remote address: %v", remoteAddr)
-	str := fmt.Sprintf(BodyFormat, cstTimeStr, remoteAddr,
-		version.AppVer, version.GetShortGitCommit(), version.BuildTime, pkgutil.GetServiceIP(), startTime)
+	str := fmt.Sprintf(BodyFormat, curTimeStr, remoteAddr,
+		version.AppVer, version.GetShortGitCommit(), version.GetBuildTimeStr(), startTime, pkgutil.GetServiceIP())
 	ctx.String(http.StatusOK, str)
 }

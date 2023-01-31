@@ -2,7 +2,7 @@
 
 source const.sh
 
-build_time=`date +%FT%T%z`
+build_time=`date +%s`
 git_commit=`git rev-parse HEAD`
 app_ver_key="github.com/nysanier/fng/src/pkg/version.AppVer"
 git_commit_key="github.com/nysanier/fng/src/pkg/version.GitCommit"

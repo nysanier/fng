@@ -1,5 +1,12 @@
 package version
 
+import (
+	"strconv"
+	"time"
+
+	"github.com/nysanier/fng/src/pkg/pkgfunc"
+)
+
 // 编译时通过ldflags注入
 var (
 	AppVer    = "xx"
@@ -17,4 +24,12 @@ func GetShortGitCommit() string {
 	}
 
 	return GitCommit[:ShortGitCommitLength]
+}
+
+func GetBuildTimeStr() string {
+	v, _ := strconv.ParseInt(BuildTime, 10, 64)
+	t := time.Unix(v, 0)
+	t2 := pkgfunc.ToCstTime(t)
+	str := pkgfunc.GetRFC3339TimeStr(t2)
+	return str
 }
