@@ -49,5 +49,7 @@ func SetSK(sk string) {
 
 // 配置表有一个value列
 const (
-	ConfigValue = "value"
+	ConfigFieldPk1   = "block"
+	ConfigFieldPk2   = "section"
+	ConfigFieldValue = "value"
 )

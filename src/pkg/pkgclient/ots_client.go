@@ -48,7 +48,7 @@ func GetOtsRow(pkList []*tablestore.PrimaryKeyColumn, tableName string) (map[str
 		log.Printf("client.GetOtsRow fail, err=%v", err)
 		return nil, err
 	}
-	log.Printf("resp: %v", pkgfunc.FormatJson(resp))
+	//log.Printf("resp: %v", pkgfunc.FormatJson(resp))
 
 	ret := map[string]interface{}{}
 	for _, col := range resp.Columns {

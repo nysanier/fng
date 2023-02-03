@@ -11,7 +11,6 @@ import (
 	"github.com/nysanier/fng/src/pkg/pkgenv"
 	"github.com/nysanier/fng/src/pkg/pkgfunc"
 	"github.com/nysanier/fng/src/pkg/pkgutil"
-	"github.com/nysanier/fng/src/pkg/pkgvar"
 	"github.com/nysanier/fng/src/pkg/version"
 )
 
@@ -25,12 +24,8 @@ func main() {
 	log.Printf("fng init begin")
 
 	pkgenv.LoadEnv()
-	pkgconfig.LoadConfig()
-
-	// dev环境暂时不启动dnsUpdater
-	if !pkgvar.IsDevEnv() {
-		go pkgutil.RunDnsUpdater()
-	}
+	pkgconfig.StartConfigUpdater()
+	pkgutil.StartDnsUpdater()
 
 	// Start Http Server
 	r := InitRouter()
@@ -85,6 +80,6 @@ func Index(ctx *gin.Context) {
 	remoteAddr := ctx.Request.RemoteAddr
 	log.Printf("remote address: %v", remoteAddr)
 	str := fmt.Sprintf(BodyFormat, curTimeStr, remoteAddr,
-		version.AppVer, version.GetShortGitCommit(), version.GetBuildTimeStr(), startTime, pkgutil.GetServiceIP())
+		version.AppVer, version.GetShortGitCommit(), version.GetBuildTimeStr(), startTime, pkgutil.GetCurrentServiceIP())
 	ctx.String(http.StatusOK, str)
 }

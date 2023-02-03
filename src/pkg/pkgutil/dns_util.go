@@ -10,18 +10,20 @@ import (
 	"time"
 
 	"github.com/nysanier/fng/src/pkg/pkgclient"
+	"github.com/nysanier/fng/src/pkg/pkgconfig"
+	"github.com/nysanier/fng/src/pkg/pkgfunc"
 	"github.com/nysanier/fng/src/pkg/pkgvar"
 )
 
 var (
-	ServiceIP = "11.22.33.44" // 定时更新
+	CurrentServiceIP = "11.22.33.44" // 定时更新
 )
 
 const (
 	FormatTime = "15:4:5"
 )
 
-func GetServiceIP() string {
+func GetCurrentServiceIP() string {
 	if pkgvar.IsDevEnv() {
 		// 将当前时间格式化为ip，方便观察
 		//s := pkgfunc.GetCstNow().Format(FormatTime)
@@ -36,11 +38,11 @@ func GetServiceIP() string {
 		//min, _ := strconv.ParseInt(l[1], 10, 64)
 		//sec, _ := strconv.ParseInt(l[2], 10, 64)
 		//return fmt.Sprintf("0.%v.%v.%v", hour, min, sec)
-		log.Printf("ServiceIP is %v", ServiceIP)
+		//log.Printf("CurrentServiceIP is %v", CurrentServiceIP)
 	}
 
 	// else use the real service ip
-	return ServiceIP
+	return CurrentServiceIP
 }
 
 func getDnsRR() string {
@@ -56,50 +58,55 @@ func getDnsRR() string {
 	}
 }
 
-// TODO: 更新之前可以先比较一下，不过当前更新的频率比较低，性能也是ok的
 func updateDns() error {
+	// 不管成功或者失败，都要求执行这个sleep
+	defer func() {
+		// 默认10分钟执行一次
+		dnsUpdateInterval := pkgconfig.GetConfigIntegerWithDefault("base", "common", "dns_update_interval", 600)
+		if dnsUpdateInterval < 30 { // 至少30秒钟才执行一次
+			dnsUpdateInterval = 30
+		}
+		log.Printf("dnsUpdateInterval: %v", dnsUpdateInterval)
+		time.Sleep(time.Second * time.Duration(dnsUpdateInterval))
+	}()
+
 	switch pkgvar.FnEnv {
 	case pkgvar.FnEnv_Dev, pkgvar.FnEnv_Daily:
 	default: // 其他环境不需要自动更新
 		return nil
 	}
 
-	if err := parseServiceIP(); err != nil {
+	serviceIP, err := parseServiceIP()
+	if err != nil {
 		log.Printf("parseServiceIP fail, err=%v", err)
 		return err
 	}
 
+	// 公网 ip 没有变化，因此不需要更新dns
+	if serviceIP == CurrentServiceIP {
+		return nil
+	}
+	CurrentServiceIP = serviceIP
+
 	rr := getDnsRR()
-	ip := GetServiceIP()
-	if err := pkgclient.SetA3927Dns(rr, ip); err != nil {
+	if err := pkgclient.SetA3927Dns(rr, serviceIP); err != nil {
 		log.Printf("SetA3927Dns fail, err=%v", err)
 		return err
 	}
 
+	log.Printf("updateDns ok, serviceIP=%v", serviceIP)
 	return nil
 }
 
-func RunDnsUpdater() {
-	ticker := time.NewTicker(time.Hour)
+var (
+	dnsUpdateTimer *pkgfunc.Timer
+)
 
-	// 启动的时候先执行一次
-	if err := updateDns(); err != nil {
-		log.Printf("updateDns fail, err=%v", err)
-		return
-	}
-
-	for {
-		select {
-		case <-ticker.C:
-			//log.Printf("test ticker")
-			if err := updateDns(); err != nil {
-				log.Printf("updateDns fail, err=%v", err)
-				time.Sleep(time.Second * 3)
-				continue
-			}
-		}
-	}
-
+func StartDnsUpdater() {
+	dnsUpdateTimer = pkgfunc.NewTimer(updateDns, time.Duration(0)) // 由updateDns来控制时间间隔
+	dnsUpdateTimer.SetFirstDelay(time.Second * 5)
+	dnsUpdateTimer.Start()
+	log.Printf("start dns updater ok")
 }
 
 /*
@@ -113,7 +120,7 @@ IP	: xx.xx.xx.xx
 数据三	: 中国浙江省杭州市 | 电信
 URL	: http://www.cip.cc/xx.xx.xx.xx
 */
-func parseServiceIP() error {
+func parseServiceIP() (string, error) {
 	var resp *http.Response
 	var err error
 
@@ -128,7 +135,7 @@ func parseServiceIP() error {
 		},
 	}
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 1; i++ {
 		//resp, err = http.Get("http://cip.cc")
 		resp, err = client.Do(req)
 		if err == nil {
@@ -136,28 +143,28 @@ func parseServiceIP() error {
 		}
 
 		log.Printf("http.Get fail, err: %v", err)
-		time.Sleep(time.Second * 3)
+		//time.Sleep(time.Second * 3)
 	}
 
 	defer resp.Body.Close()
 	buf, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("ioutil.ReadAll fail, err: %v", err)
-		return err
+		return "", err
 	}
 
 	str := string(buf)
 	lines := strings.Split(str, "\n")
 	if len(lines) == 0 {
-		return fmt.Errorf("split fail, str=%v", str)
+		return "", fmt.Errorf("split fail, str=%v", str)
 	}
 
 	line0 := lines[0]
 	l := strings.Split(line0, ":")
 	if len(l) < 2 {
-		return fmt.Errorf("split fail, line0=%v", line0)
+		return "", fmt.Errorf("split fail, line0=%v", line0)
 	}
 
-	ServiceIP = strings.TrimSpace(l[1])
-	return nil
+	serviceIP := strings.TrimSpace(l[1])
+	return serviceIP, nil
 }
