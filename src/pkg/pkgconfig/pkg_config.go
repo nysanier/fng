@@ -12,82 +12,104 @@ import (
 	"github.com/nysanier/fng/src/pkg/pkgvar"
 )
 
-// TODO: 启动一个协程定时加载配置
-// 加载配置(ots)
-func LoadConfig() {
-	pk1 := fmt.Sprintf("fng_%v", pkgvar.FnEnv)
-	pk2 := "common"
-	otsPk := pkgclient.OtsPk{
-		PkList:  []string{pkgvar.ConfigFieldPk1, pkgvar.ConfigFieldPk2},
-		ValList: []interface{}{pk1, pk2},
-	}
-	otsRow, err := pkgclient.GetOtsRow2(otsPk, configTableName)
-	if err != nil {
-		log.Printf("pkgclient.GetOtsRow fail, err=%v", err)
-		return
-	}
-
-	log.Printf("otsRow=%v", pkgfunc.FormatJson(otsRow))
-	if otsRow[pkgvar.ConfigFieldValue] == nil {
-		log.Printf("config value is nil, otsPk=%v", pkgfunc.FormatJson(otsPk))
-		panic("config value is nil")
-		return
-	}
-}
-
+// 定时加载配置(ots)
 var (
-	//cfgMap      sync.Map
-	//config      Config
 	configLock      sync.RWMutex
 	configMap       = make(map[string]map[string]interface{})
-	configTableName = "config"
+	configTableName = "fng_config" // 所有环境暂时都使用同一个表，通过block来区分env
 	configTimer     *pkgfunc.Timer
 )
 
-// configMap的key格式，移除了fng_daily等前缀
+// configMap的key格式，移除了dev/daily等前缀
 func FormatConfigKey(block, section string) string {
-	return fmt.Sprintf("%v#%v", block, section)
+	return fmt.Sprintf("%v#%v/%v", pkgvar.FnEnv, block, section)
 }
 
-// TODO: 支持加载所有的配置项，目前仅支持加载fng_env#common配置项
+// configMap的key格式，从config表加载过来的block和section已经包含了dev/daily前前缀，因此这里不额外添加
+func FormatConfigKeyForSave(block, section string) string {
+	return fmt.Sprintf("%v/%v", block, section)
+}
+
+// 每个env加载相关的所有配置项
 func loadConfig() error {
-	env := fmt.Sprintf("fng_%v", pkgvar.FnEnv)
-	block := "base"
-	section := "common"
-	pk1 := fmt.Sprintf("%v#%v", env, block)
-	pk2 := section
-	otsPk := pkgclient.OtsPk{
+	envStart := fmt.Sprintf("%v", pkgvar.FnEnv) // 比如`dev#x`一定是在`dev`和`dev~`之间的
+	envEnd := fmt.Sprintf("%v~", pkgvar.FnEnv)
+	startPks := &pkgclient.OtsPks{
 		PkList:  []string{pkgvar.ConfigFieldPk1, pkgvar.ConfigFieldPk2},
-		ValList: []interface{}{pk1, pk2},
+		ValList: []interface{}{envStart, nil},
 	}
-	otsRow, err := pkgclient.GetOtsRow2(otsPk, configTableName)
+	endPks := &pkgclient.OtsPks{
+		PkList:  []string{pkgvar.ConfigFieldPk1, pkgvar.ConfigFieldPk2},
+		ValList: []interface{}{envEnd, nil},
+	}
+	pksList, valList, err := pkgclient.GetOtsClient().GetRangeAllWithPks(startPks, endPks, configTableName)
 	if err != nil {
-		log.Printf("pkgclient.GetOtsRow fail, err=%v", err)
+		log.Printf("pkgclient.GetRangeAllWithPks fail, err=%v", err)
 		return err
 	}
 
-	value := "null"
-	valIntf := otsRow[pkgvar.ConfigFieldValue]
-	if valIntf != nil {
-		value = valIntf.(string)
+	for i, pks := range pksList {
+		itemMap := valList[i]
+		//log.Printf("value=%v", itemMap[pkgvar.ConfigFieldValue])
+		block := pks.ValList[0].(string)   // 0就是block
+		section := pks.ValList[1].(string) // 1就是section
+		if err := saveConfig(block, section, itemMap[pkgvar.ConfigFieldValue]); err != nil {
+			log.Printf("saveConfig fail, err=%v", err)
+			return err
+		}
 	}
 
-	//log.Printf("value=%v", value)
+	return nil
+}
+
+// TODO: 加锁又可以优化，但暂时先这样了
+func saveConfig(block, section string, v interface{}) error {
+	// 通过value这样一个json格式更通用，因为mysql等rds作为配制源的话，扩展配置字段没有那么方便，且ots行不会拉的那么长！
+	value := "null"
+	if v != nil {
+		value = v.(string)
+	}
 
 	itemMap := make(map[string]interface{})
 	if err := json.Unmarshal([]byte(value), &itemMap); err != nil {
-		log.Printf("json.Unmarshal fail, err=%v", err)
-		return err
+		log.Printf("json.Unmarshal fail, err=%v, ignore the value=%v", err, value)
+		return nil
 	}
 
-	key := FormatConfigKey(block, section)
+	key := FormatConfigKeyForSave(block, section)
 
 	// 最小化加锁
 	configLock.Lock()
 	configMap[key] = itemMap
 	configLock.Unlock()
 
-	log.Printf("loadConfig ok")
+	return nil
+}
+
+//  每个env只加载相关的dev#base/common这一个配置项
+func loadOneConfig() error {
+	block := "base"
+	section := "common"
+	pk1 := fmt.Sprintf("%v#%v", pkgvar.FnEnv, block)
+	pk2 := section
+	pks := &pkgclient.OtsPks{
+		PkList:  []string{pkgvar.ConfigFieldPk1, pkgvar.ConfigFieldPk2},
+		ValList: []interface{}{pk1, pk2},
+	}
+
+	itemMap, err := pkgclient.GetOtsClient().GetRowByPks(pks, configTableName)
+	if err != nil {
+		log.Printf("pkgclient.GetRowByPks fail, err=%v", err)
+		return err
+	}
+
+	// 通过value这样一个json格式更通用，因为mysql等rds作为配制源的话，扩展配置字段没有那么方便，且ots行不会拉的那么长！
+	if err := saveConfig(block, section, itemMap[pkgvar.ConfigFieldValue]); err != nil {
+		log.Printf("saveConfig fail, err=%v", err)
+		return err
+	}
+
+	log.Printf("loadOneConfig ok")
 	return nil
 }
 

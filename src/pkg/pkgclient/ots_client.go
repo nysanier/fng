@@ -10,78 +10,308 @@ import (
 	"github.com/nysanier/fng/src/pkg/pkgvar"
 )
 
-var (
-	otsClientOnce sync.Once
-	otsClient     *tablestore.TableStoreClient
+const (
+	OtsLimitOnce = 100 // 单次操作的数量, TODO: 测试环境=2，正式环境=100
 )
 
-func GetOtsClient() *tablestore.TableStoreClient {
-	instanceName := "a3927top"
-	endpoint := fmt.Sprintf("https://%v.%v.ots.aliyuncs.com", instanceName, pkgvar.RegionID)
+// 封装ots的操作，对外提供方便使用的方法
+type OtsClient struct {
+	client *tablestore.TableStoreClient
+}
 
+var otsClientOnce sync.Once
+var otsClient *OtsClient
+
+// 单例模式
+func GetOtsClient() *OtsClient {
 	otsClientOnce.Do(func() {
-		otsClient = tablestore.NewClient(endpoint, instanceName, pkgvar.GetAK(), pkgvar.GetSK())
+		instanceName := "a3927top"
+		endpoint := fmt.Sprintf("https://%v.%v.ots.aliyuncs.com", instanceName, pkgvar.RegionID)
+		otsClient = &OtsClient{
+			client: tablestore.NewClient(endpoint, instanceName, pkgvar.GetAK(), pkgvar.GetSK()),
+		}
 	})
 
 	return otsClient
 }
 
+// 从ots中解析出来，或者格式到ots
+
+// 返回的map已经初始化
+func ParseColumn(cols []*tablestore.AttributeColumn) map[string]interface{} {
+	valMap := map[string]interface{}{}
+	for _, col := range cols {
+		valMap[col.ColumnName] = col.Value
+	}
+
+	return valMap
+}
+
+func ParsePk(pk *tablestore.PrimaryKey) *OtsPks {
+	pks := &OtsPks{}
+	for _, col := range pk.PrimaryKeys {
+		pks.PkList = append(pks.PkList, col.ColumnName)
+		pks.ValList = append(pks.ValList, col.Value)
+	}
+
+	return pks
+}
+
+// 返回的map已经初始化
+func ParseRow(row *tablestore.Row) map[string]interface{} {
+	return ParseColumn(row.Columns)
+}
+
+// 返回的map已经初始化
+func ParseRows(rows []*tablestore.Row) ([]*OtsPks, []map[string]interface{}) {
+	var pksList []*OtsPks
+	var valList []map[string]interface{}
+	for _, row := range rows {
+		pksList = append(pksList, ParsePk(row.PrimaryKey))
+		valList = append(valList, ParseRow(row))
+	}
+	return pksList, valList
+}
+
+func FormatPk2(startPks, endPks *OtsPks) (*tablestore.PrimaryKey, *tablestore.PrimaryKey, error) {
+	if err := startPks.CheckWithPks(endPks); err != nil {
+		return nil, nil, err
+	}
+
+	startPk := new(tablestore.PrimaryKey)
+	endPk := new(tablestore.PrimaryKey)
+	for i, startPksPk := range startPks.PkList {
+		startPksVal := startPks.ValList[i]
+		endPksPk := endPks.PkList[i]
+		endPksVal := endPks.ValList[i]
+
+		// startPks中的空值(nil), 表示min, 否则用指定的val
+		// endPks中的空值(nil), 表示max, 否则用指定的val
+		if startPksVal == nil {
+			startPk.AddPrimaryKeyColumnWithMinValue(startPksPk)
+		} else {
+			startPk.AddPrimaryKeyColumn(startPksPk, startPksVal)
+		}
+
+		if endPksVal == nil {
+			endPk.AddPrimaryKeyColumnWithMaxValue(endPksPk)
+		} else {
+			endPk.AddPrimaryKeyColumn(endPksPk, endPksVal)
+		}
+	}
+
+	return startPk, endPk, nil
+}
+
+// GetRow 类
 // return columnNameValueMap, err
 // err=nil时, map一定非空
-func GetOtsRow(pkList []*tablestore.PrimaryKeyColumn, tableName string) (map[string]interface{}, error) {
+func (p *OtsClient) GetRow(pkList []*tablestore.PrimaryKeyColumn, tableName string) (*tablestore.Row, error) {
 	if len(pkList) == 0 {
 		return nil, fmt.Errorf("invalid pkList(%v)", pkgfunc.FormatJson(pkList))
 	}
 
-	client := GetOtsClient()
-
 	req := new(tablestore.GetRowRequest)
 	criteria := new(tablestore.SingleRowQueryCriteria)
-	putPk := new(tablestore.PrimaryKey)
-	putPk.PrimaryKeys = pkList
-	criteria.PrimaryKey = putPk
+	criteria.PrimaryKey = &tablestore.PrimaryKey{PrimaryKeys: pkList}
 	req.SingleRowQueryCriteria = criteria
 	req.SingleRowQueryCriteria.TableName = tableName
 	req.SingleRowQueryCriteria.MaxVersion = 1
-	resp, err := client.GetRow(req)
+	resp, err := otsClient.client.GetRow(req)
 	if err != nil {
-		log.Printf("client.GetOtsRow fail, err=%v", err)
+		log.Printf("otsClient.GetRow fail, err=%v", err)
 		return nil, err
 	}
 	//log.Printf("resp: %v", pkgfunc.FormatJson(resp))
 
-	ret := map[string]interface{}{}
-	for _, col := range resp.Columns {
-		ret[col.ColumnName] = col.Value
+	row := &tablestore.Row{
+		PrimaryKey: &resp.PrimaryKey,
+		Columns:    resp.Columns,
 	}
 
-	return ret, nil
+	return row, nil
 }
 
-type OtsPk struct {
+type OtsPks struct {
 	PkList  []string
 	ValList []interface{}
 }
 
-func GetOtsRow1(pk string, pkv interface{}, tableName string) (map[string]interface{}, error) {
+func (p *OtsPks) Check() error {
+	pkListLen := len(p.PkList)
+	valListLen := len(p.ValList)
+
+	if pkListLen != valListLen {
+		return fmt.Errorf("pkListLen(%v) != valListLen(%v)", pkListLen, valListLen)
+	}
+
+	return nil
+}
+
+func (p *OtsPks) CheckWithPks(rhs *OtsPks) error {
+	if err := p.Check(); err != nil {
+		return fmt.Errorf("this Pks invalid, %v", err.Error())
+	}
+
+	if err := rhs.Check(); err != nil {
+		return fmt.Errorf("that Pks invalid, %v", err.Error())
+	}
+
+	thisLen := len(p.PkList)
+	thatLen := len(rhs.PkList)
+	if thisLen != thatLen {
+		return fmt.Errorf("thisLen(%v) != thatLen(%v)", thisLen, thatLen)
+	}
+
+	return nil
+}
+
+func (p *OtsClient) GetRowByPk(pk string, pkv interface{}, tableName string) (map[string]interface{}, error) {
 	pkList := []*tablestore.PrimaryKeyColumn{
 		{ColumnName: pk, Value: pkv},
 	}
 
-	return GetOtsRow(pkList, tableName)
+	row, err := p.GetRow(pkList, tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := ParseRow(row)
+	return ret, nil
 }
 
-func GetOtsRow2(otsPk OtsPk, tableName string) (map[string]interface{}, error) {
-	l1 := len(otsPk.PkList)
-	l2 := len(otsPk.ValList)
-	if l1 > l2 { // 取两者较小者
-		l1 = l2
+func (p *OtsClient) GetRowByPks(pks *OtsPks, tableName string) (map[string]interface{}, error) {
+	if err := pks.Check(); err != nil {
+		return nil, err
 	}
 
 	pkList := []*tablestore.PrimaryKeyColumn{}
-	for i, pk := range otsPk.PkList {
-		pkList = append(pkList, &tablestore.PrimaryKeyColumn{ColumnName: pk, Value: otsPk.ValList[i]})
+	for i, pk := range pks.PkList {
+		pkList = append(pkList, &tablestore.PrimaryKeyColumn{ColumnName: pk, Value: pks.ValList[i]})
 	}
 
-	return GetOtsRow(pkList, tableName)
+	row, err := p.GetRow(pkList, tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := ParseRow(row)
+	return ret, nil
+}
+
+const (
+	Order_ASC  = tablestore.FORWARD  // 升序
+	Order_DESC = tablestore.BACKWARD // 降序
+)
+
+// GetRange 类, limit<1表示全部获取，每次处理100条, 会返回nextPrimary,
+func (p *OtsClient) GetRange(startPk, endPk *tablestore.PrimaryKey, order tablestore.Direction, limit int, tableName string) ([]*tablestore.Row, *tablestore.PrimaryKey, error) {
+	var rows []*tablestore.Row
+	nextPk := startPk
+	for {
+		rowsOnce, nextPk2, err := p.getRangeInternal(nextPk, endPk, order, OtsLimitOnce, tableName)
+		if err != nil {
+			log.Printf("otsClient.getRangeInternal fail, err=%v", err)
+			return nil, nil, err
+		}
+
+		rows = append(rows, rowsOnce...)
+		nextPk = nextPk2
+
+		// 已经达到limit的量了
+		if limit > 0 && len(rows) > limit {
+			break
+		}
+
+		// 没有下一个了
+		if nextPk2 == nil {
+			break
+		}
+	}
+
+	return rows, nextPk, nil
+}
+
+func (p *OtsClient) getRangeInternal(startPk, endPk *tablestore.PrimaryKey, order tablestore.Direction, limit int, tableName string) ([]*tablestore.Row, *tablestore.PrimaryKey, error) {
+	startPkLen := len(startPk.PrimaryKeys)
+	endPkLen := len(endPk.PrimaryKeys)
+	if startPkLen < 1 || startPkLen > 4 || startPkLen != endPkLen { // ots的pk最多4列
+		return nil, nil, fmt.Errorf("invalid startPk=%v, endPk=%v", pkgfunc.FormatJson(startPk), pkgfunc.FormatJson(endPk))
+	}
+
+	req := new(tablestore.GetRangeRequest)
+	criteria := new(tablestore.RangeRowQueryCriteria)
+	criteria.StartPrimaryKey = startPk
+	criteria.EndPrimaryKey = endPk
+	criteria.Direction = order
+	criteria.Limit = int32(limit)
+	criteria.MaxVersion = 1 // 不使用多版本
+
+	req.RangeRowQueryCriteria = criteria
+	req.RangeRowQueryCriteria.TableName = tableName
+	req.RangeRowQueryCriteria.MaxVersion = 1
+	resp, err := otsClient.client.GetRange(req)
+	if err != nil {
+		log.Printf("otsClient.GetRange fail, err=%v", err)
+		return nil, nil, err
+	}
+	//log.Printf("resp: %v", pkgfunc.FormatJson(resp))
+
+	return resp.Rows, resp.NextStartPrimaryKey, nil
+}
+
+func (p *OtsClient) GetRangeAll(startPk, endPk *tablestore.PrimaryKey, tableName string) ([]*tablestore.Row, error) {
+	order := Order_ASC // 顺序无关
+	limit := 0
+	rows, nextPk, err := p.GetRange(startPk, endPk, order, limit, tableName)
+	if err != nil {
+		log.Printf("GetRange fail, err=%v", err)
+		return nil, err
+	}
+
+	_ = nextPk // 一定为nil
+	return rows, err
+}
+
+func (p *OtsClient) GetRangeAllWithPks(startPks, endPks *OtsPks, tableName string) ([]*OtsPks, []map[string]interface{}, error) {
+	startPk, endPk, err := FormatPk2(startPks, endPks)
+	if err != nil {
+		log.Printf("GetRangeAllWithPks fail, err=%v", err)
+		return nil, nil, err
+	}
+
+	rows, err := p.GetRangeAll(startPk, endPk, tableName)
+	if err != nil {
+		log.Printf("GetRangeAll fail, err=%v", err)
+		return nil, nil, err
+	}
+
+	pksList, valList := ParseRows(rows)
+	return pksList, valList, nil
+}
+
+func (p *OtsClient) GetRangeWithPks(startPks, endPks *OtsPks, order tablestore.Direction, limit int, tableName string) ([]*tablestore.Row, *OtsPks, error) {
+	startPk, endPk, err := FormatPk2(startPks, endPks)
+	if err != nil {
+		log.Printf("FormatPk2 fail, err=%v", err)
+		return nil, nil, err
+	}
+
+	// 将nextPrimary转化为OtsPks格式
+	rows, nextPrimary, err := p.GetRange(startPk, endPk, order, limit, tableName)
+	if err != nil {
+		log.Printf("GetRange fail, err=%v", err)
+		return nil, nil, err
+	}
+
+	if nextPrimary == nil {
+		return rows, nil, nil
+	}
+
+	nextPks := &OtsPks{}
+	for _, pk := range nextPrimary.PrimaryKeys {
+		nextPks.PkList = append(nextPks.PkList, pk.ColumnName)
+		nextPks.ValList = append(nextPks.ValList, pk.Value)
+	}
+	return rows, nextPks, nil
 }
