@@ -19,3 +19,4 @@ main
 /.idea/
 
 
+/src/roles/echo-svc/ignored_dir/
