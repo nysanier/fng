@@ -47,8 +47,18 @@ func InitRouter() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	//v2 := r.Group("/v2")
+	r.Use(Recover)
 	r.GET("/", Index)
 	return r
+}
+
+// 防止意外宕机
+func Recover(ctx *gin.Context) {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Printf("recover ok, err=%v", err)
+		}
+	}()
 }
 
 const (
