@@ -1,6 +1,7 @@
 package pkgfunc
 
 import (
+	"fmt"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -64,11 +65,23 @@ func (p *Timer) Run() {
 		}
 
 		time.Sleep(p.Interval)
-		if err := p.Func(); err != nil {
+		if err := p.DoTimerFunc(); err != nil {
 			log.Printf("do timer func fail, err=%v", err)
 			continue
 		}
 	}
 
 	p.Wg.Done()
+}
+
+func (p *Timer) DoTimerFunc() (err error) {
+	defer func() {
+		if err2 := recover(); err2 != nil {
+			err3 := fmt.Errorf("DoTimerFunc panic")
+			log.Printf("do timer func panic, err=%v", err2) // 真实原因只在这里打印
+			err = err3                                      // 将panic信息传递出去
+		}
+	}()
+
+	return p.Func()
 }
