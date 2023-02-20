@@ -40,10 +40,3 @@ func GetSK() string {
 func SetSK(sk string) {
 	sk_ = sk
 }
-
-// 配置表有一个value列
-const (
-	ConfigFieldPk1   = "block"
-	ConfigFieldPk2   = "section"
-	ConfigFieldValue = "value"
-)

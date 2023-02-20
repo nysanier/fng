@@ -16,6 +16,11 @@ import (
 // 定时加载配置(ots)
 const (
 	tableName = "fng_config" // 所有环境暂时都使用同一个表，通过block来区分env
+
+	// 配置表2个pk列和1个属性列
+	ConfigFieldPkBlock   = "block"
+	ConfigFieldPkSection = "section"
+	ConfigFieldValue     = "value"
 )
 
 var (
@@ -35,11 +40,11 @@ func loadConfig() error {
 	envStart := fmt.Sprintf("%v", pkgvar.FnEnv) // 比如`dev#x`一定是在`dev`和`dev~`之间的
 	envEnd := fmt.Sprintf("%v~", pkgvar.FnEnv)
 	startPks := &pkgclient.OtsPks{
-		PkList:  []string{pkgvar.ConfigFieldPk1, pkgvar.ConfigFieldPk2},
+		PkList:  []string{ConfigFieldPkBlock, ConfigFieldPkSection},
 		ValList: []interface{}{envStart, nil},
 	}
 	endPks := &pkgclient.OtsPks{
-		PkList:  []string{pkgvar.ConfigFieldPk1, pkgvar.ConfigFieldPk2},
+		PkList:  []string{ConfigFieldPkBlock, ConfigFieldPkSection},
 		ValList: []interface{}{envEnd, nil},
 	}
 	pksList, valList, err := pkgclient.GetOtsClient().GetRangeAllWithPks(startPks, endPks, tableName)
@@ -48,17 +53,21 @@ func loadConfig() error {
 		return err
 	}
 
+	var sectionCount int
 	for i, pks := range pksList {
 		itemMap := valList[i]
 		//log.Printf("value=%v", itemMap[pkgvar.ConfigFieldValue])
-		block := pks.ValList[0].(string)   // 0就是block
+		pkBlock := pks.ValList[0].(string) // 0就是block
 		section := pks.ValList[1].(string) // 1就是section
-		if err := saveConfig(block, section, itemMap[pkgvar.ConfigFieldValue]); err != nil {
-			log.Printf("saveConfig fail, err=%v", err)
-			return err
+		if err := saveConfig(pkBlock, section, itemMap[ConfigFieldValue]); err != nil {
+			log.Printf("saveConfig fail but continue, err=%v", err)
+			continue
 		}
+
+		sectionCount += 1
 	}
 
+	log.Printf("load config ok, sectionCount=%v", sectionCount)
 	return nil
 }
 
@@ -79,7 +88,7 @@ func saveConfig(pkBlock, section string, v interface{}) error {
 	itemMap := make(map[string]interface{})
 	if err := json.Unmarshal([]byte(value), &itemMap); err != nil {
 		log.Printf("json.Unmarshal fail, err=%v, ignore the value=%v", err, value)
-		return nil
+		return err
 	}
 
 	pkgconfig.SetItemMap(block, section, itemMap)
@@ -103,7 +112,7 @@ func loadOneConfig() error {
 	pk1 := fmt.Sprintf("%v#%v", pkgvar.FnEnv, block)
 	pk2 := section
 	pks := &pkgclient.OtsPks{
-		PkList:  []string{pkgvar.ConfigFieldPk1, pkgvar.ConfigFieldPk2},
+		PkList:  []string{ConfigFieldPkBlock, ConfigFieldPkSection},
 		ValList: []interface{}{pk1, pk2},
 	}
 
@@ -114,7 +123,7 @@ func loadOneConfig() error {
 	}
 
 	// 通过value这样一个json格式更通用，因为mysql等rds作为配制源的话，扩展配置字段没有那么方便，且ots行不会拉的那么长！
-	if err := saveConfig(block, section, itemMap[pkgvar.ConfigFieldValue]); err != nil {
+	if err := saveConfig(block, section, itemMap[ConfigFieldValue]); err != nil {
 		log.Printf("saveConfig fail, err=%v", err)
 		return err
 	}
