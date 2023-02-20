@@ -1,11 +1,5 @@
 package pkgvar
 
-// 通过操作系统env方式导入
-var (
-	FnEnv    string // fn_env
-	FnAesKey []byte // fn_aes_key
-)
-
 // FnEnv常量定义
 const (
 	FnEnv_Dev   = "dev"

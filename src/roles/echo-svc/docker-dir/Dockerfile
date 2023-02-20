@@ -1,4 +1,4 @@
-FROM nginx
+FROM alpine:3.14
 
 COPY echo-svc.bin /
 
