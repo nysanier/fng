@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/nysanier/fng/src/pkg/pkgconfig"
+	"github.com/nysanier/fng/src/pkg/pkgconfig/configimpl"
 	"github.com/nysanier/fng/src/pkg/pkgenv"
 	"github.com/nysanier/fng/src/pkg/pkgfunc"
 	"github.com/nysanier/fng/src/pkg/pkgutil"
@@ -21,7 +21,7 @@ func main() {
 	log.Printf("app version: %v.%v, build time: %v", version.AppVer, version.GetShortGitCommit(), version.GetBuildTimeStr())
 
 	pkgenv.LoadEnv()
-	pkgconfig.StartConfigUpdater()
+	configimpl.StartConfigUpdater()
 	pkgutil.StartDnsUpdater()
 
 	// Start Http Server
