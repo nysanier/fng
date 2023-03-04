@@ -7,7 +7,6 @@ import (
 	sls "github.com/aliyun/aliyun-log-go-sdk"
 	"github.com/gogo/protobuf/proto"
 	"github.com/nysanier/fng/src/pkg/pkgclient"
-	"github.com/nysanier/fng/src/pkg/pkglog"
 )
 
 const (
@@ -15,11 +14,8 @@ const (
 	LogStoreName = "a3927top-nginx"
 )
 
-// 每5分钟更新一次配置
-func InitSlsLog() {
-	pkglog.InitLog() // 初始化基础log
-	impl := &LogImplSls{}
-	pkglog.SetImpl(impl)
+func NewLogImplSls() *LogImplSls {
+	return &LogImplSls{}
 }
 
 type LogImplSls struct {

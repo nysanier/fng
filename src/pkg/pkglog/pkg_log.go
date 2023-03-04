@@ -8,21 +8,26 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/nysanier/fng/src/pkg/pkgvar"
+	"github.com/nysanier/fng/src/pkg/pkgenv"
 )
 
 type LogIntf interface {
 	WriteLog(keys []string, vals []string)
 }
 
-var logIntf LogIntf
+var (
+	logIntf LogIntf
+	appName string
+)
 
 func SetImpl(intf LogIntf) {
 	logIntf = intf
 }
 
-func InitLog() {
+func InitLog(intf LogIntf, app string) {
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
+	logIntf = intf
+	appName = app
 }
 
 func shortFilePath(fp string) string {
@@ -61,10 +66,11 @@ func writeLog(level, event string, items ...interface{}) {
 	// 元信息
 	itemList = append(itemList,
 		//"_fn_rfc3339", timeStr,
-		"_fn_env", pkgvar.FnEnv,
+		"_fn_env", pkgenv.GetEnv(),
 		"_fn_level", level,
 		"_fn_file", shortFilePath(file),
 		"_fn_line", line,
+		"_fn_app", appName,
 		"Event", event, // TODO: 通过开关来定义？
 		// TODO: 通过开关带上RequestID信息？
 	)

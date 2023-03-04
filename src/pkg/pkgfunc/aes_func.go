@@ -7,7 +7,7 @@ import (
 	"encoding/base64"
 	"errors"
 
-	"github.com/nysanier/fng/src/pkg/pkgvar"
+	"github.com/nysanier/fng/src/pkg/pkgenv"
 )
 
 //加密过程：
@@ -85,7 +85,7 @@ func AesDecrypt(data []byte, key []byte) ([]byte, error) {
 
 //EncryptByAES Aes加密 后 base64 再加
 func EncryptByAES(data []byte) (string, error) {
-	res, err := AesEncrypt(data, pkgvar.FnAesKey)
+	res, err := AesEncrypt(data, pkgenv.GetAesKey())
 	if err != nil {
 		return "", err
 	}
@@ -98,5 +98,5 @@ func DecryptByAES(data string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return AesDecrypt(dataByte, pkgvar.FnAesKey)
+	return AesDecrypt(dataByte, pkgenv.GetAesKey())
 }

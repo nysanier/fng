@@ -5,10 +5,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/nysanier/fng/src/pkg/pkgfunc"
+	"github.com/nysanier/fng/src/pkg/pkgddns"
 	"github.com/nysanier/fng/src/pkg/pkglog"
 	"github.com/nysanier/fng/src/pkg/pkgutil"
-	"github.com/nysanier/fng/src/pkg/pkgvar"
 	"github.com/nysanier/fng/src/pkg/version"
 )
 
@@ -30,12 +29,12 @@ func Index(ctx *gin.Context) {
 	pkglog.Infov("EvtDumpRemoteAddr",
 		"Addr", remoteAddr)
 	str := fmt.Sprintf(BodyFormat, curTimeStr, remoteAddr,
-		version.AppVer, version.GetShortGitCommit(), version.GetBuildTimeStr(), pkgvar.FnStartTime, pkgutil.GetCurrentServiceIP())
+		version.AppVer, version.GetShortGitCommit(), version.GetBuildTimeStr(), pkgutil.GetStartTime(), pkgddns.GetCurrentServiceIP())
 	ctx.String(http.StatusOK, str)
 }
 
 func getFn1123CstTimeStr() string {
-	t := pkgfunc.GetCstNow()
+	t := pkgutil.GetCstNow()
 	str := t.Format(Fn3339)
 	return str
 }

@@ -1,4 +1,4 @@
-package pkgutil
+package ddnsimpl
 
 import (
 	"fmt"
@@ -10,55 +10,25 @@ import (
 
 	"github.com/nysanier/fng/src/pkg/pkgclient"
 	"github.com/nysanier/fng/src/pkg/pkgconf"
-	"github.com/nysanier/fng/src/pkg/pkgfunc"
+	"github.com/nysanier/fng/src/pkg/pkgddns"
+	"github.com/nysanier/fng/src/pkg/pkgenv"
 	"github.com/nysanier/fng/src/pkg/pkglog"
-	"github.com/nysanier/fng/src/pkg/pkgvar"
 )
-
-var (
-	CurrentServiceIP = "11.22.33.44" // 定时更新
-)
-
-const (
-	FormatTime = "15:4:5"
-)
-
-func GetCurrentServiceIP() string {
-	if pkgvar.IsDevEnv() {
-		// 将当前时间格式化为ip，方便观察
-		//s := pkgfunc.GetCstNow().Format(FormatTime)
-		//
-		//l := strings.Split(s, ":")
-		//
-		//if len(l) < 3 {
-		//	return "0.0.0.0"
-		//}
-		//
-		//hour, _ := strconv.ParseInt(l[0], 10, 64)
-		//min, _ := strconv.ParseInt(l[1], 10, 64)
-		//sec, _ := strconv.ParseInt(l[2], 10, 64)
-		//return fmt.Sprintf("0.%v.%v.%v", hour, min, sec)
-		//log.Printf("CurrentServiceIP is %v", CurrentServiceIP)
-	}
-
-	// else use the real service ip
-	return CurrentServiceIP
-}
 
 func getDnsRR() string {
-	switch pkgvar.FnEnv {
-	case pkgvar.FnEnv_Dev:
+	switch pkgenv.GetEnv() {
+	case pkgenv.FnEnv_Dev:
 		return "dev"
-	case pkgvar.FnEnv_Daily:
+	case pkgenv.FnEnv_Daily:
 		return "daily"
-	case pkgvar.FnEnv_Stg:
+	case pkgenv.FnEnv_Stg:
 		return "stg"
 	default:
 		return "test"
 	}
 }
 
-func updateDns() error {
+func UpdateDns() error {
 	// 不管成功或者失败，都要求执行这个sleep
 	defer func() {
 		// 默认10分钟执行一次
@@ -71,8 +41,8 @@ func updateDns() error {
 		time.Sleep(time.Second * time.Duration(dnsUpdateInterval))
 	}()
 
-	switch pkgvar.FnEnv {
-	case pkgvar.FnEnv_Dev, pkgvar.FnEnv_Daily:
+	switch pkgenv.GetEnv() {
+	case pkgenv.FnEnv_Dev, pkgenv.FnEnv_Daily:
 	default: // 其他环境不需要自动更新
 		return nil
 	}
@@ -85,10 +55,10 @@ func updateDns() error {
 	}
 
 	// 公网 ip 没有变化，因此不需要更新dns
-	if serviceIP == CurrentServiceIP {
+	if serviceIP == pkgddns.CurrentServiceIP {
 		return nil
 	}
-	CurrentServiceIP = serviceIP
+	pkgddns.CurrentServiceIP = serviceIP
 
 	rr := getDnsRR()
 	if err := pkgclient.SetA3927Dns(rr, serviceIP); err != nil {
@@ -100,17 +70,6 @@ func updateDns() error {
 	pkglog.Infov("EvtDnsUpdateDnsOK",
 		"ServiceIP", serviceIP)
 	return nil
-}
-
-var (
-	dnsUpdateTimer *pkgfunc.Timer
-)
-
-func StartDnsUpdater() {
-	dnsUpdateTimer = pkgfunc.NewTimer(updateDns, time.Duration(0)) // 由updateDns来控制时间间隔
-	dnsUpdateTimer.SetFirstDelay(time.Second * 5)
-	dnsUpdateTimer.Start()
-	pkglog.Infov("EvtDnsStartUpdaterOK")
 }
 
 /*

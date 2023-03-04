@@ -4,13 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/nysanier/fng/src/pkg/pkgclient"
 	"github.com/nysanier/fng/src/pkg/pkgconf"
-	"github.com/nysanier/fng/src/pkg/pkgfunc"
+	"github.com/nysanier/fng/src/pkg/pkgenv"
 	"github.com/nysanier/fng/src/pkg/pkglog"
-	"github.com/nysanier/fng/src/pkg/pkgvar"
 )
 
 // 定时加载配置(ots)
@@ -23,23 +21,10 @@ const (
 	ConfigFieldValue     = "value"
 )
 
-var (
-	configTimer *pkgfunc.Timer
-)
-
-// 每5分钟更新一次配置
-func StartConfigUpdater() {
-	interval := 300
-	configTimer = pkgfunc.NewTimer(loadConfig, time.Second*time.Duration(interval))
-	configTimer.Start()
-	pkglog.Infov("EvtConfStartUpdaterOK",
-		"Interval", interval)
-}
-
 // 每个env加载相关的所有配置项
-func loadConfig() error {
-	envStart := fmt.Sprintf("%v", pkgvar.FnEnv) // 比如`dev#x`一定是在`dev`和`dev~`之间的
-	envEnd := fmt.Sprintf("%v~", pkgvar.FnEnv)
+func LoadConfigOts() error {
+	envStart := fmt.Sprintf("%v", pkgenv.GetEnv()) // 比如`dev#x`一定是在`dev`和`dev~`之间的
+	envEnd := fmt.Sprintf("%v~", pkgenv.GetEnv())
 	startPks := &pkgclient.OtsPks{
 		PkList:  []string{ConfigFieldPkBlock, ConfigFieldPkSection},
 		ValList: []interface{}{envStart, nil},
@@ -103,7 +88,7 @@ func saveConfig(pkBlock, section string, v interface{}) error {
 
 // configMap的key格式，移除了dev/daily等前缀
 func FormatConfigKey(block, section string) string {
-	return fmt.Sprintf("%v#%v/%v", pkgvar.FnEnv, block, section)
+	return fmt.Sprintf("%v#%v/%v", pkgenv.GetEnv(), block, section)
 }
 
 // configMap的key格式，从config表加载过来的block和section已经包含了dev/daily前前缀，因此这里不额外添加
@@ -115,7 +100,7 @@ func FormatConfigKeyForSave(block, section string) string {
 func loadOneConfig() error {
 	block := "base"
 	section := "common"
-	pk1 := fmt.Sprintf("%v#%v", pkgvar.FnEnv, block)
+	pk1 := fmt.Sprintf("%v#%v", pkgenv.GetEnv(), block)
 	pk2 := section
 	pks := &pkgclient.OtsPks{
 		PkList:  []string{ConfigFieldPkBlock, ConfigFieldPkSection},

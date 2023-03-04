@@ -3,13 +3,27 @@ package pkgconf
 import (
 	"fmt"
 	"sync"
+	"time"
+
+	"github.com/nysanier/fng/src/pkg/pkgfunc"
+	"github.com/nysanier/fng/src/pkg/pkglog"
 )
 
 var (
 	configLock sync.RWMutex
 	// 比如 base.common = {"x"=1,"y"="a"}, 即 base.common.x = 1
-	configMap = make(map[string]map[string]interface{})
+	configMap   = make(map[string]map[string]interface{})
+	configTimer *pkgfunc.Timer
 )
+
+// 每5分钟更新一次配置
+func InitConf(loadConfig pkgfunc.TimerFunc) {
+	interval := 300
+	configTimer = pkgfunc.NewTimer(loadConfig, time.Second*time.Duration(interval))
+	configTimer.Start()
+	pkglog.Infov("EvtConfInitOK",
+		"UpdateInterval", interval)
+}
 
 // configMap的key格式，比如 base.common
 func FormatConfigKey(block, section string) string {

@@ -1,17 +1,5 @@
 package pkgvar
 
-// FnEnv常量定义
-const (
-	FnEnv_Dev   = "dev"
-	FnEnv_Daily = "daily"
-	FnEnv_Stg   = "stg"
-	FnEnv_Prod  = "prod"
-)
-
-func IsDevEnv() bool {
-	return FnEnv == FnEnv_Dev
-}
-
 const (
 	// TODO: 通过ots/kms等存储和加解密， aksk需要env常量来解码
 	OriAK    = "QvBLI9DsD+kwwFnK9xlBqO/kzAwDArMGV3TFnyxUxkY="

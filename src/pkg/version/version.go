@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/nysanier/fng/src/pkg/pkgfunc"
+	"github.com/nysanier/fng/src/pkg/pkgutil"
 )
 
 // 编译时通过ldflags注入
@@ -29,7 +30,7 @@ func GetShortGitCommit() string {
 func GetBuildTimeStr() string {
 	v, _ := strconv.ParseInt(BuildTime, 10, 64)
 	t := time.Unix(v, 0)
-	t2 := pkgfunc.ToCstTime(t)
+	t2 := pkgutil.ToCstTime(t)
 	str := pkgfunc.GetRFC3339TimeStr(t2)
 	return str
 }

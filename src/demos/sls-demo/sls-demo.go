@@ -10,6 +10,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/nysanier/fng/src/pkg/pkgclient"
 	"github.com/nysanier/fng/src/pkg/pkgenv"
+	"github.com/nysanier/fng/src/pkg/pkgfunc"
 	"github.com/nysanier/fng/src/pkg/pkglog"
 	"github.com/nysanier/fng/src/pkg/pkglog/logimpl"
 )
@@ -44,8 +45,10 @@ func main() {
 }
 
 func writeLog2() {
-	pkgenv.LoadEnv()
-	logimpl.InitSlsLog()
+	pkgenv.InitEnv()
+	pkgfunc.InitAksk()
+	pkglog.InitLog(logimpl.NewLogImplSls(), "sls-demo")
+
 	pkglog.Infov("Evt1", "k1", "v1", "k2", "v2")
 	pkglog.Warnv("EvtXXXFail", "Error", "ErrYYY")
 	pkglog.Errorv("Evt3")

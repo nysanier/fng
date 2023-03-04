@@ -4,13 +4,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/nysanier/fng/src/pkg/pkgconf"
 	"github.com/nysanier/fng/src/pkg/pkgconf/confimpl"
+	"github.com/nysanier/fng/src/pkg/pkgddns"
+	"github.com/nysanier/fng/src/pkg/pkgddns/ddnsimpl"
 	"github.com/nysanier/fng/src/pkg/pkgenv"
 	"github.com/nysanier/fng/src/pkg/pkgfunc"
 	"github.com/nysanier/fng/src/pkg/pkglog"
 	"github.com/nysanier/fng/src/pkg/pkglog/logimpl"
 	"github.com/nysanier/fng/src/pkg/pkgutil"
-	"github.com/nysanier/fng/src/pkg/pkgvar"
 	"github.com/nysanier/fng/src/pkg/version"
 	"github.com/nysanier/fng/src/svcs/echo-svc/router"
 )
@@ -18,12 +20,13 @@ import (
 func main() {
 	// 初始化 随机数、时区、启动时间
 	pkgfunc.InitRand()
-	pkgvar.TzLoc = pkgfunc.LoadTzLoc()
-	pkgvar.FnStartTime = getCRFC3339CstTimeStr()
+	pkgutil.InitTzLoc()
+	pkgutil.InitStartTime()
 
 	// 初始化 env/log
-	pkgenv.LoadEnv()
-	logimpl.InitSlsLog()
+	pkgenv.InitEnv()
+	pkgfunc.InitAksk()
+	pkglog.InitLog(logimpl.NewLogImplSls(), "echo-svc")
 
 	pkglog.Infov("EvtFngInitBegin",
 		"AppVersion", version.GetAppVersion(),
@@ -31,8 +34,8 @@ func main() {
 		"BuildTime", version.GetBuildTimeStr())
 
 	// 初始化 conf/dns
-	confimpl.StartConfigUpdater()
-	pkgutil.StartDnsUpdater()
+	pkgconf.InitConf(confimpl.LoadConfigOts)
+	pkgddns.InitDdns(ddnsimpl.UpdateDns)
 
 	// Start Http Server
 	r := router.InitRouter()
@@ -48,10 +51,4 @@ func main() {
 	pkglog.Infov("EvtFngInitEnd")
 	var ch chan int
 	<-ch
-}
-
-func getCRFC3339CstTimeStr() string {
-	t := pkgfunc.GetCstNow()
-	str := pkgfunc.GetRFC3339TimeStr(t)
-	return str
 }
