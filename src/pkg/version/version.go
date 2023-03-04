@@ -33,3 +33,7 @@ func GetBuildTimeStr() string {
 	str := pkgfunc.GetRFC3339TimeStr(t2)
 	return str
 }
+
+func GetAppVersion() string {
+	return AppVer
+}

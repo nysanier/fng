@@ -1,10 +1,10 @@
 package pkgfunc
 
 import (
-	"log"
 	"math/rand"
 	"time"
 
+	"github.com/nysanier/fng/src/pkg/pkglog"
 	"github.com/nysanier/fng/src/pkg/pkgvar"
 )
 
@@ -23,7 +23,8 @@ func ToCstTime(t time.Time) time.Time {
 func LoadTzLoc() *time.Location {
 	loc, err := time.LoadLocation("Asia/Shanghai")
 	if err != nil {
-		log.Printf("time.LoadLocation fail: err=%v", err)
+		pkglog.Warnv("EvtTimeLoadLocationFail",
+			"Error", err)
 		loc = time.UTC // 默认使用 utc
 	}
 

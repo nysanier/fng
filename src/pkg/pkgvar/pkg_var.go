@@ -40,3 +40,7 @@ func GetSK() string {
 func SetSK(sk string) {
 	sk_ = sk
 }
+
+func GetRegionID() string {
+	return RegionID
+}

@@ -3,13 +3,13 @@ package confimpl
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
 	"github.com/nysanier/fng/src/pkg/pkgclient"
 	"github.com/nysanier/fng/src/pkg/pkgconf"
 	"github.com/nysanier/fng/src/pkg/pkgfunc"
+	"github.com/nysanier/fng/src/pkg/pkglog"
 	"github.com/nysanier/fng/src/pkg/pkgvar"
 )
 
@@ -32,7 +32,8 @@ func StartConfigUpdater() {
 	interval := 300
 	configTimer = pkgfunc.NewTimer(loadConfig, time.Second*time.Duration(interval))
 	configTimer.Start()
-	log.Printf("start config updater ok, interval=%v", interval)
+	pkglog.Infov("EvtConfStartUpdaterOK",
+		"Interval", interval)
 }
 
 // 每个env加载相关的所有配置项
@@ -49,7 +50,8 @@ func loadConfig() error {
 	}
 	pksList, valList, err := pkgclient.GetOtsClient().GetRangeAllWithPks(startPks, endPks, tableName)
 	if err != nil {
-		log.Printf("pkgclient.GetRangeAllWithPks fail, err=%v", err)
+		pkglog.Warnv("EvtOtsGetRangeAllWithPksFail",
+			"Error", err)
 		return err
 	}
 
@@ -60,14 +62,16 @@ func loadConfig() error {
 		pkBlock := pks.ValList[0].(string) // 0就是block
 		section := pks.ValList[1].(string) // 1就是section
 		if err := saveConfig(pkBlock, section, itemMap[ConfigFieldValue]); err != nil {
-			log.Printf("saveConfig fail but continue, err=%v", err)
+			pkglog.Warnv("EvtOtsConfSaveConfigFailButContinue",
+				"Error", err)
 			continue
 		}
 
 		sectionCount += 1
 	}
 
-	log.Printf("load config ok, sectionCount=%v", sectionCount)
+	pkglog.Infov("EvtOtsConfLoadConfigOK",
+		"SectionCount", sectionCount)
 	return nil
 }
 
@@ -87,7 +91,9 @@ func saveConfig(pkBlock, section string, v interface{}) error {
 
 	itemMap := make(map[string]interface{})
 	if err := json.Unmarshal([]byte(value), &itemMap); err != nil {
-		log.Printf("json.Unmarshal fail, err=%v, ignore the value=%v", err, value)
+		pkglog.Warnv("EvtJsonUnmarshalFail",
+			"Error", err,
+			"Value", value)
 		return err
 	}
 
@@ -118,16 +124,18 @@ func loadOneConfig() error {
 
 	itemMap, err := pkgclient.GetOtsClient().GetRowByPks(pks, tableName)
 	if err != nil {
-		log.Printf("pkgclient.GetRowByPks fail, err=%v", err)
+		pkglog.Warnv("EvtOtsConfGetRowByPksFail",
+			"Error", err)
 		return err
 	}
 
 	// 通过value这样一个json格式更通用，因为mysql等rds作为配制源的话，扩展配置字段没有那么方便，且ots行不会拉的那么长！
 	if err := saveConfig(block, section, itemMap[ConfigFieldValue]); err != nil {
-		log.Printf("saveConfig fail, err=%v", err)
+		pkglog.Warnv("EvtOtsConfSaveConfigFail",
+			"Error", err)
 		return err
 	}
 
-	log.Printf("loadOneConfig ok")
+	pkglog.Infov("EvtOtsConfLoadOneConfigOK")
 	return nil
 }

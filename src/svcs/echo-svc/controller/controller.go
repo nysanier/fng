@@ -2,11 +2,11 @@ package controller
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nysanier/fng/src/pkg/pkgfunc"
+	"github.com/nysanier/fng/src/pkg/pkglog"
 	"github.com/nysanier/fng/src/pkg/pkgutil"
 	"github.com/nysanier/fng/src/pkg/pkgvar"
 	"github.com/nysanier/fng/src/pkg/version"
@@ -27,7 +27,8 @@ const (
 func Index(ctx *gin.Context) {
 	curTimeStr := getFn1123CstTimeStr()
 	remoteAddr := ctx.Request.RemoteAddr
-	log.Printf("remote address: %v", remoteAddr)
+	pkglog.Infov("EvtDumpRemoteAddr",
+		"Addr", remoteAddr)
 	str := fmt.Sprintf(BodyFormat, curTimeStr, remoteAddr,
 		version.AppVer, version.GetShortGitCommit(), version.GetBuildTimeStr(), pkgvar.FnStartTime, pkgutil.GetCurrentServiceIP())
 	ctx.String(http.StatusOK, str)

@@ -1,13 +1,14 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/nysanier/fng/src/pkg/pkgconf/confimpl"
 	"github.com/nysanier/fng/src/pkg/pkgenv"
 	"github.com/nysanier/fng/src/pkg/pkgfunc"
+	"github.com/nysanier/fng/src/pkg/pkglog"
+	"github.com/nysanier/fng/src/pkg/pkglog/logimpl"
 	"github.com/nysanier/fng/src/pkg/pkgutil"
 	"github.com/nysanier/fng/src/pkg/pkgvar"
 	"github.com/nysanier/fng/src/pkg/version"
@@ -20,13 +21,16 @@ func main() {
 	pkgvar.TzLoc = pkgfunc.LoadTzLoc()
 	pkgvar.FnStartTime = getCRFC3339CstTimeStr()
 
-	// 初始化日志
-	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
-	log.Printf("------- fng init begin -------")
-	log.Printf("app version: %v.%v, build time: %v", version.AppVer, version.GetShortGitCommit(), version.GetBuildTimeStr())
-
-	// 初始化 env、conf、dns
+	// 初始化 env/log
 	pkgenv.LoadEnv()
+	logimpl.InitSlsLog()
+
+	pkglog.Infov("EvtFngInitBegin",
+		"AppVersion", version.GetAppVersion(),
+		"GitCommit", version.GetShortGitCommit(),
+		"BuildTime", version.GetBuildTimeStr())
+
+	// 初始化 conf/dns
 	confimpl.StartConfigUpdater()
 	pkgutil.StartDnsUpdater()
 
@@ -41,7 +45,7 @@ func main() {
 	}
 	go server.ListenAndServe()
 
-	log.Printf("--- fng init end ---")
+	pkglog.Infov("EvtFngInitEnd")
 	var ch chan int
 	<-ch
 }

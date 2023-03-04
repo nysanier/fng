@@ -3,7 +3,6 @@ package pkgutil
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"github.com/nysanier/fng/src/pkg/pkgclient"
 	"github.com/nysanier/fng/src/pkg/pkgconf"
 	"github.com/nysanier/fng/src/pkg/pkgfunc"
+	"github.com/nysanier/fng/src/pkg/pkglog"
 	"github.com/nysanier/fng/src/pkg/pkgvar"
 )
 
@@ -66,7 +66,8 @@ func updateDns() error {
 		if dnsUpdateInterval < 30 { // 至少30秒钟才执行一次
 			dnsUpdateInterval = 30
 		}
-		log.Printf("dnsUpdateInterval: %v", dnsUpdateInterval)
+		pkglog.Infov("EvtDnsDumpUpdateInterval",
+			"Interval", dnsUpdateInterval)
 		time.Sleep(time.Second * time.Duration(dnsUpdateInterval))
 	}()
 
@@ -78,7 +79,8 @@ func updateDns() error {
 
 	serviceIP, err := parseServiceIP()
 	if err != nil {
-		log.Printf("parseServiceIP fail, err=%v", err)
+		pkglog.Warnv("EvtDnsParseServiceIPFail",
+			"Error", err)
 		return err
 	}
 
@@ -90,11 +92,13 @@ func updateDns() error {
 
 	rr := getDnsRR()
 	if err := pkgclient.SetA3927Dns(rr, serviceIP); err != nil {
-		log.Printf("SetA3927Dns fail, err=%v", err)
+		pkglog.Warnv("EvtDnsSetA3927DnsFail",
+			"Error", err)
 		return err
 	}
 
-	log.Printf("updateDns ok, serviceIP=%v", serviceIP)
+	pkglog.Infov("EvtDnsUpdateDnsOK",
+		"ServiceIP", serviceIP)
 	return nil
 }
 
@@ -106,7 +110,7 @@ func StartDnsUpdater() {
 	dnsUpdateTimer = pkgfunc.NewTimer(updateDns, time.Duration(0)) // 由updateDns来控制时间间隔
 	dnsUpdateTimer.SetFirstDelay(time.Second * 5)
 	dnsUpdateTimer.Start()
-	log.Printf("start dns updater ok")
+	pkglog.Infov("EvtDnsStartUpdaterOK")
 }
 
 /*
@@ -142,14 +146,16 @@ func parseServiceIP() (string, error) {
 			break
 		}
 
-		log.Printf("http.Get fail, err: %v", err)
+		pkglog.Warnv("EvtHttpGetFail",
+			"Error", err)
 		//time.Sleep(time.Second * 3)
 	}
 
 	defer resp.Body.Close()
 	buf, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("ioutil.ReadAll fail, err: %v", err)
+		pkglog.Warnv("EvtDnsReadHttpBodyFail",
+			"Error", err)
 		return "", err
 	}
 

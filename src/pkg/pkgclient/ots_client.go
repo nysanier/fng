@@ -2,11 +2,11 @@ package pkgclient
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/aliyun/aliyun-tablestore-go-sdk/tablestore"
 	"github.com/nysanier/fng/src/pkg/pkgfunc"
+	"github.com/nysanier/fng/src/pkg/pkglog"
 	"github.com/nysanier/fng/src/pkg/pkgvar"
 )
 
@@ -119,10 +119,11 @@ func (p *OtsClient) GetRow(pkList []*tablestore.PrimaryKeyColumn, tableName stri
 	req.SingleRowQueryCriteria.MaxVersion = 1
 	resp, err := otsClient.client.GetRow(req)
 	if err != nil {
-		log.Printf("otsClient.GetRow fail, err=%v", err)
+		pkglog.Warnv("EvtOtsGetRowFail",
+			"Error", err)
 		return nil, err
 	}
-	//log.Printf("resp: %v", pkgfunc.FormatJson(resp))
+	//pkglog.Infov("EvtOtsDumpResp", "Resp", pkgfunc.FormatJson(resp))
 
 	row := &tablestore.Row{
 		PrimaryKey: &resp.PrimaryKey,
@@ -211,7 +212,8 @@ func (p *OtsClient) GetRange(startPk, endPk *tablestore.PrimaryKey, order tables
 	for {
 		rowsOnce, nextPk2, err := p.getRangeInternal(nextPk, endPk, order, OtsLimitOnce, tableName)
 		if err != nil {
-			log.Printf("otsClient.getRangeInternal fail, err=%v", err)
+			pkglog.Warnv("EvtOtsGetRangeInternalFail",
+				"Error", err)
 			return nil, nil, err
 		}
 
@@ -252,7 +254,8 @@ func (p *OtsClient) getRangeInternal(startPk, endPk *tablestore.PrimaryKey, orde
 	req.RangeRowQueryCriteria.MaxVersion = 1
 	resp, err := otsClient.client.GetRange(req)
 	if err != nil {
-		log.Printf("otsClient.GetRange fail, err=%v", err)
+		pkglog.Warnv("EvtOtsGetRangeFail",
+			"Error", err)
 		return nil, nil, err
 	}
 	//log.Printf("resp: %v", pkgfunc.FormatJson(resp))
@@ -265,7 +268,8 @@ func (p *OtsClient) GetRangeAll(startPk, endPk *tablestore.PrimaryKey, tableName
 	limit := 0
 	rows, nextPk, err := p.GetRange(startPk, endPk, order, limit, tableName)
 	if err != nil {
-		log.Printf("GetRange fail, err=%v", err)
+		pkglog.Warnv("EvtOtsGetRangeFail",
+			"Error", err)
 		return nil, err
 	}
 
@@ -276,13 +280,15 @@ func (p *OtsClient) GetRangeAll(startPk, endPk *tablestore.PrimaryKey, tableName
 func (p *OtsClient) GetRangeAllWithPks(startPks, endPks *OtsPks, tableName string) ([]*OtsPks, []map[string]interface{}, error) {
 	startPk, endPk, err := FormatPk2(startPks, endPks)
 	if err != nil {
-		log.Printf("GetRangeAllWithPks fail, err=%v", err)
+		pkglog.Warnv("EvtOtsGetRangeAllWithPksFail",
+			"Error", err)
 		return nil, nil, err
 	}
 
 	rows, err := p.GetRangeAll(startPk, endPk, tableName)
 	if err != nil {
-		log.Printf("GetRangeAll fail, err=%v", err)
+		pkglog.Warnv("EvtOtsGetRangeAllFail",
+			"Error", err)
 		return nil, nil, err
 	}
 
@@ -293,14 +299,16 @@ func (p *OtsClient) GetRangeAllWithPks(startPks, endPks *OtsPks, tableName strin
 func (p *OtsClient) GetRangeWithPks(startPks, endPks *OtsPks, order tablestore.Direction, limit int, tableName string) ([]*tablestore.Row, *OtsPks, error) {
 	startPk, endPk, err := FormatPk2(startPks, endPks)
 	if err != nil {
-		log.Printf("FormatPk2 fail, err=%v", err)
+		pkglog.Warnv("EvtOtsFormatPk2Fail",
+			"Error", err)
 		return nil, nil, err
 	}
 
 	// 将nextPrimary转化为OtsPks格式
 	rows, nextPrimary, err := p.GetRange(startPk, endPk, order, limit, tableName)
 	if err != nil {
-		log.Printf("GetRange fail, err=%v", err)
+		pkglog.Warnv("EvtOtsGetRangeFail",
+			"Error", err)
 		return nil, nil, err
 	}
 

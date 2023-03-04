@@ -2,10 +2,11 @@ package pkgfunc
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/nysanier/fng/src/pkg/pkglog"
 )
 
 type TimerFunc func() error
@@ -54,7 +55,8 @@ func (p *Timer) Run() {
 
 	// 启动的时候先执行一次
 	if err := p.Func(); err != nil {
-		log.Printf("do timer func firstly fail, err=%v", err)
+		pkglog.Warnv("EvtTimerRunFuncFirstlyFail",
+			"Error", err)
 		return
 	}
 
@@ -66,7 +68,8 @@ func (p *Timer) Run() {
 
 		time.Sleep(p.Interval)
 		if err := p.DoTimerFunc(); err != nil {
-			log.Printf("do timer func fail, err=%v", err)
+			pkglog.Warnv("EvtTimerRunFuncFail",
+				"Error", err)
 			continue
 		}
 	}
@@ -78,8 +81,9 @@ func (p *Timer) DoTimerFunc() (err error) {
 	defer func() {
 		if err2 := recover(); err2 != nil {
 			err3 := fmt.Errorf("DoTimerFunc panic")
-			log.Printf("do timer func panic, err=%v", err2) // 真实原因只在这里打印
-			err = err3                                      // 将panic信息传递出去
+			pkglog.Warnv("EvtTimerRunFuncPanic",
+				"error", err2) // 真实原因只在这里打印
+			err = err3 // 将panic信息传递出去
 		}
 	}()
 

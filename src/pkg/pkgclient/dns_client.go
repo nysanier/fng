@@ -1,13 +1,13 @@
 package pkgclient
 
 import (
-	"log"
 	"strings"
 	"sync"
 
 	dnsclient "github.com/alibabacloud-go/alidns-20150109/v4/client"
 	openclient "github.com/alibabacloud-go/darabonba-openapi/v2/client"
 	"github.com/nysanier/fng/src/pkg/pkgfunc"
+	"github.com/nysanier/fng/src/pkg/pkglog"
 	"github.com/nysanier/fng/src/pkg/pkgvar"
 )
 
@@ -27,7 +27,8 @@ func GetDnsClient() *dnsclient.Client {
 		var err error
 		dnsClient, err = dnsclient.NewClient(cfg)
 		if err != nil {
-			log.Printf("dnsclient.NewClient fail, err=%v", err)
+			pkglog.Warnv("EvtDnsNewClientFail",
+				"Error", err)
 			panic(err)
 		}
 	})
@@ -42,10 +43,13 @@ func ListA3927Dns() string {
 	}
 	resp, err := client.DescribeDomainRecords(req)
 	if err != nil {
-		log.Printf("client.DescribeDomainRecords fail, err=%v", err)
+		pkglog.Warnv("EvtDnsDescribeDomainRecordsFail",
+			"Error", err)
 	}
 	for i, v := range resp.Body.DomainRecords.Record {
-		log.Printf("record: %v <-> %v", i, pkgfunc.FormatJson(v))
+		pkglog.Infov("EvtDnsDumpDomainRecord",
+			"Index", i,
+			"Record", pkgfunc.FormatJson(v))
 	}
 
 	return "TODO"
@@ -77,7 +81,8 @@ func SetA3927Dns(rr, value string) error {
 			return nil
 		}
 
-		log.Printf("client.UpdateDomainRecord fail, err=%v", err)
+		pkglog.Warnv("EvtDnsUpdateDomainRecordFail",
+			"Error", err)
 		return err
 	}
 
