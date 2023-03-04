@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/nysanier/fng/src/pkg/pkgconfig/configimpl"
+	"github.com/nysanier/fng/src/pkg/pkgconf/confimpl"
 	"github.com/nysanier/fng/src/pkg/pkgenv"
 	"github.com/nysanier/fng/src/pkg/pkgfunc"
 	"github.com/nysanier/fng/src/pkg/pkgutil"
@@ -27,7 +27,7 @@ func main() {
 
 	// 初始化 env、conf、dns
 	pkgenv.LoadEnv()
-	configimpl.StartConfigUpdater()
+	confimpl.StartConfigUpdater()
 	pkgutil.StartDnsUpdater()
 
 	// Start Http Server

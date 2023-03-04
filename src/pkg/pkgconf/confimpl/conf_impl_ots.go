@@ -1,4 +1,4 @@
-package configimpl
+package confimpl
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/nysanier/fng/src/pkg/pkgclient"
-	"github.com/nysanier/fng/src/pkg/pkgconfig"
+	"github.com/nysanier/fng/src/pkg/pkgconf"
 	"github.com/nysanier/fng/src/pkg/pkgfunc"
 	"github.com/nysanier/fng/src/pkg/pkgvar"
 )
@@ -91,7 +91,7 @@ func saveConfig(pkBlock, section string, v interface{}) error {
 		return err
 	}
 
-	pkgconfig.SetItemMap(block, section, itemMap)
+	pkgconf.SetItemMap(block, section, itemMap)
 	return nil
 }
 

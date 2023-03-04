@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/nysanier/fng/src/pkg/pkgclient"
-	"github.com/nysanier/fng/src/pkg/pkgconfig"
+	"github.com/nysanier/fng/src/pkg/pkgconf"
 	"github.com/nysanier/fng/src/pkg/pkgfunc"
 	"github.com/nysanier/fng/src/pkg/pkgvar"
 )
@@ -62,7 +62,7 @@ func updateDns() error {
 	// 不管成功或者失败，都要求执行这个sleep
 	defer func() {
 		// 默认10分钟执行一次
-		dnsUpdateInterval := pkgconfig.GetConfigIntegerWithDefault("base", "common", "dns_update_interval", 600)
+		dnsUpdateInterval := pkgconf.GetConfigIntegerWithDefault("base", "common", "dns_update_interval", 600)
 		if dnsUpdateInterval < 30 { // 至少30秒钟才执行一次
 			dnsUpdateInterval = 30
 		}

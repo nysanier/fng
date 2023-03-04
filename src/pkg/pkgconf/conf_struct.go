@@ -1,4 +1,4 @@
-package pkgconfig
+package pkgconf
 
 // fng_daily#common配置项
 type Config struct {
