@@ -2,7 +2,7 @@ package router
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/nysanier/fng/src/roles/echo-svc/controller"
+	"github.com/nysanier/fng/src/svcs/echo-svc/controller"
 )
 
 func InitRouter() *gin.Engine {

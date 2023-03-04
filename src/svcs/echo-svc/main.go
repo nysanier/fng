@@ -11,7 +11,7 @@ import (
 	"github.com/nysanier/fng/src/pkg/pkgutil"
 	"github.com/nysanier/fng/src/pkg/pkgvar"
 	"github.com/nysanier/fng/src/pkg/version"
-	"github.com/nysanier/fng/src/roles/echo-svc/router"
+	"github.com/nysanier/fng/src/svcs/echo-svc/router"
 )
 
 func main() {
