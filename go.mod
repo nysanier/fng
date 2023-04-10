@@ -7,7 +7,7 @@ require (
 	github.com/aliyun/aliyun-log-go-sdk v0.1.43
 	github.com/aliyun/aliyun-tablestore-go-sdk v1.7.7
 	github.com/gin-gonic/gin v1.7.7
-	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/gogo/protobuf v1.3.2
 	github.com/smartystreets/goconvey v1.7.2
 )
 

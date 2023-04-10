@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	InitConfigMap()
 	// init observable, not biz
 	InitLog()
 	InitMetric()
